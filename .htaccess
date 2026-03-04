@@ -1,0 +1,11 @@
+# Laser game is the default home page at /
+# Redirect old /laser and /laser/ URLs to root
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^laser/?$ / [L,R=301]
+RewriteRule ^laser/index\.html$ / [L,R=301]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ api/index.php?path=$1 [L,QSA]
+</IfModule>

@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Laser Labyrinth</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; min-height: 100%; overflow: hidden; background: #0a0e1a; font-family: 'Segoe UI', system-ui, sans-serif; color: #e0e0e0; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; position: fixed; inset: 0; }
+
+#topBar {
+  position: fixed; top: 0; left: 0; right: 0; height: 48px;
+  background: rgba(10, 14, 26, 0.98); border-bottom: 1px solid rgba(100, 200, 255, 0.15);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 100;
+  backdrop-filter: blur(8px); pointer-events: auto;
+}
+#topBar * { pointer-events: auto; }
+#topBar .level-info { font-size: 14px; font-weight: 600; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#topBar .level-info span { color: #64d2ff; }
+#topBar .buttons { display: flex; gap: 4px; flex-shrink: 0; }
+#topBar button, #bottomBar button {
+  background: rgba(100, 210, 255, 0.1); border: 1px solid rgba(100, 210, 255, 0.3);
+  color: #64d2ff; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 500; transition: all 0.2s; touch-action: manipulation;
+  min-height: 38px; min-width: 40px; flex-shrink: 0;
+}
+#topBar button:hover, #bottomBar button:hover {
+  background: rgba(100, 210, 255, 0.25); border-color: rgba(100, 210, 255, 0.6);
+}
+
+#bottomBar {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 72px;
+  background: #0a0e1a; border-top: 1px solid rgba(100, 200, 255, 0.2);
+  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 8px; z-index: 100;
+  touch-action: manipulation; pointer-events: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px); flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+}
+#bottomBar button { pointer-events: auto; }
+.tool-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 4px 8px; border-radius: 8px; cursor: default; opacity: 0.5;
+  border: 1px solid transparent; transition: all 0.2s; user-select: none; flex-shrink: 0;
+}
+.tool-item.available { opacity: 1; cursor: grab; }
+.tool-item.available:hover { background: rgba(100, 210, 255, 0.1); border-color: rgba(100, 210, 255, 0.3); }
+.tool-item .icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+.tool-item .label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+@media (max-width: 500px) {
+  .tool-item { display: none; }
+  #bottomBar { justify-content: center; gap: 10px; }
+}
+
+#helpText {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; color: rgba(100, 210, 255, 0.6); text-align: center;
+  pointer-events: none; transition: opacity 0.5s; z-index: 10;
+}
+
+#winOverlay {
+  position: fixed; inset: 0; background: rgba(5, 8, 18, 0.85);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+  backdrop-filter: blur(6px);
+}
+#winOverlay.show { display: flex; }
+#winPanel {
+  background: rgba(15, 25, 50, 0.95); border: 1px solid rgba(100, 210, 255, 0.3);
+  border-radius: 16px; padding: 40px 48px; text-align: center;
+  box-shadow: 0 0 60px rgba(100, 210, 255, 0.15);
+}
+#winPanel h2 { font-size: 28px; color: #64d2ff; margin-bottom: 8px; }
+#winPanel p { font-size: 15px; color: rgba(200, 220, 255, 0.7); margin-bottom: 24px; }
+#winPanel button {
+  background: rgba(100, 210, 255, 0.15); border: 1px solid rgba(100, 210, 255, 0.4);
+  color: #64d2ff; padding: 10px 32px; border-radius: 8px; cursor: pointer;
+  font-size: 15px; font-weight: 600; transition: all 0.2s; touch-action: manipulation;
+}
+#winPanel button:hover { background: rgba(100, 210, 255, 0.3); }
+
+#levelSelectOverlay {
+  position: fixed; inset: 0; background: rgba(5, 8, 18, 0.92);
+  display: none; z-index: 200; backdrop-filter: blur(8px);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+#levelSelectOverlay.show { display: block; }
+#levelSelectInner {
+  max-width: 520px; margin: 0 auto; padding: 24px 16px 40px;
+}
+#levelSelectInner h2 {
+  font-size: 22px; color: #64d2ff; text-align: center; margin-bottom: 20px; font-weight: 700;
+}
+.ls-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;
+}
+.ls-card {
+  background: rgba(15, 25, 50, 0.8); border: 1px solid rgba(100, 210, 255, 0.15);
+  border-radius: 12px; padding: 16px 14px; cursor: pointer; transition: all 0.2s;
+  text-align: center; position: relative; touch-action: manipulation;
+}
+.ls-card:hover { background: rgba(25, 40, 70, 0.9); border-color: rgba(100, 210, 255, 0.4); }
+.ls-card.current { border-color: #64d2ff; box-shadow: 0 0 16px rgba(100, 210, 255, 0.2); }
+.ls-card .ls-num { font-size: 28px; font-weight: 700; color: #64d2ff; }
+.ls-card .ls-name { font-size: 12px; color: rgba(200, 220, 255, 0.7); margin-top: 4px; }
+.ls-card .ls-badge {
+  position: absolute; top: 8px; right: 10px; font-size: 16px;
+}
+.ls-close {
+  position: fixed; top: 12px; right: 16px; z-index: 201;
+  background: rgba(100, 210, 255, 0.1); border: 1px solid rgba(100, 210, 255, 0.3);
+  color: #64d2ff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+  font-size: 20px; display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation; transition: all 0.2s;
+}
+.ls-close:hover { background: rgba(100, 210, 255, 0.25); }
+
+#gameCanvasWrap {
+  position: fixed; top: 48px; left: 0; right: 0; bottom: 72px;
+  z-index: 0; width: 100%;
+}
+canvas { display: block; width: 100%; height: 100%; touch-action: none; pointer-events: auto; }
+
+#editorBar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(10, 14, 26, 0.95); border-top: 1px solid rgba(100, 200, 255, 0.15);
+  display: none; flex-direction: column; z-index: 10; backdrop-filter: blur(8px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+#editorBar.show { display: flex; }
+#editorPalette {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 8px 4px; overflow-x: auto; flex-wrap: nowrap;
+}
+.ed-tool {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent; transition: all 0.15s; touch-action: manipulation;
+  min-width: 52px;
+}
+.ed-tool:hover { background: rgba(100, 210, 255, 0.08); }
+.ed-tool.active { border-color: #64d2ff; background: rgba(100, 210, 255, 0.12); }
+.ed-tool .ed-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+.ed-tool .ed-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(200,220,255,0.7); }
+#editorActions {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 4px 8px 8px;
+}
+#editorActions button {
+  background: rgba(100, 210, 255, 0.1); border: 1px solid rgba(100, 210, 255, 0.3);
+  color: #64d2ff; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  font-size: 12px; font-weight: 500; transition: all 0.2s; touch-action: manipulation;
+  min-height: 34px;
+}
+#editorActions button:hover { background: rgba(100, 210, 255, 0.25); }
+#editorActions button.danger { color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
+#editorActions button.danger:hover { background: rgba(255,107,107,0.15); }
+#editorActions button.primary { background: rgba(100,210,255,0.2); border-color: #64d2ff; }
+
+#editorProps {
+  position: fixed; top: 56px; right: 8px; z-index: 15;
+  background: rgba(15, 25, 50, 0.95); border: 1px solid rgba(100, 210, 255, 0.2);
+  border-radius: 10px; padding: 12px; min-width: 160px;
+  display: none; backdrop-filter: blur(8px);
+}
+#editorProps.show { display: block; }
+#editorProps h4 { font-size: 12px; color: #64d2ff; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.ep-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0; font-size: 12px; color: rgba(200,220,255,0.8);
+}
+.ep-row label { flex: 1; }
+.ep-row input[type="checkbox"] { accent-color: #64d2ff; width: 16px; height: 16px; }
+.ep-colors { display: flex; gap: 4px; margin-top: 4px; }
+.ep-color {
+  width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; transition: all 0.15s;
+}
+.ep-color.active { border-color: #fff; transform: scale(1.15); }
+
+#savedLevelsOverlay {
+  position: fixed; inset: 0; background: rgba(5, 8, 18, 0.92);
+  display: none; z-index: 200; backdrop-filter: blur(8px);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+#savedLevelsOverlay.show { display: block; }
+#savedLevelsInner { max-width: 520px; margin: 0 auto; padding: 24px 16px 40px; }
+#savedLevelsInner h2 { font-size: 22px; color: #64d2ff; text-align: center; margin-bottom: 20px; }
+.sl-card {
+  background: rgba(15, 25, 50, 0.8); border: 1px solid rgba(100, 210, 255, 0.15);
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: all 0.2s; cursor: pointer; touch-action: manipulation;
+}
+.sl-card:hover { border-color: rgba(100, 210, 255, 0.4); }
+.sl-card-info { flex: 1; }
+.sl-card-name { font-size: 14px; font-weight: 600; color: #e0e0e0; }
+.sl-card-meta { font-size: 11px; color: rgba(200,220,255,0.5); margin-top: 2px; }
+.sl-card-actions { display: flex; gap: 6px; }
+.sl-card-actions button {
+  background: rgba(100, 210, 255, 0.1); border: 1px solid rgba(100, 210, 255, 0.2);
+  color: #64d2ff; padding: 4px 10px; border-radius: 5px; cursor: pointer;
+  font-size: 11px; touch-action: manipulation;
+}
+.sl-card-actions button.sl-del { color: #ff6b6b; border-color: rgba(255,107,107,0.2); }
+</style>
+</head>
+<body>
+
+<div id="topBar">
+  <div class="level-info">Level <span id="levelNum">1</span>: <span id="levelName">Tutorial</span></div>
+  <div class="buttons">
+    <button type="button" id="btnLevels">Levels</button>
+    <button type="button" id="btnBuild">Build</button>
+    <button type="button" id="btnReset">Reset</button>
+    <button type="button" id="btnPrev">&#9664;</button>
+    <button type="button" id="btnNext">&#9654;</button>
+  </div>
+</div>
+
+<div id="gameCanvasWrap"><canvas id="gameCanvas"></canvas></div>
+
+<div id="helpText">Drag to move &bull; Click to rotate &bull; Arrow keys also rotate &bull; Hit all targets!</div>
+
+<div id="bottomBar" role="toolbar"></div>
+
+<div id="editorBar">
+  <div id="editorPalette"></div>
+  <div id="editorActions">
+    <button type="button" id="edRotLeft">\u21b6</button>
+    <button type="button" id="edRotRight">\u21b7</button>
+    <button type="button" id="edDelete" class="danger">Delete</button>
+    <button type="button" id="edSave" class="primary">Save</button>
+    <button type="button" id="edPlay" class="primary">Play</button>
+    <button type="button" id="edExit">Exit</button>
+  </div>
+</div>
+
+<div id="editorProps">
+  <h4 id="epTitle">Properties</h4>
+  <div class="ep-row"><label>Draggable</label><input type="checkbox" id="epDraggable"></div>
+  <div class="ep-row"><label>Rotatable</label><input type="checkbox" id="epRotatable"></div>
+  <div class="ep-row"><label>Color</label></div>
+  <div class="ep-colors" id="epColors"></div>
+</div>
+
+<div id="savedLevelsOverlay">
+  <button class="ls-close" id="btnSlClose">&times;</button>
+  <div id="savedLevelsInner">
+    <h2>My Levels</h2>
+    <div id="slList"></div>
+    <div style="text-align:center;margin-top:16px;">
+      <button type="button" id="btnSlNew" style="background:rgba(100,210,255,0.15);border:1px solid rgba(100,210,255,0.4);color:#64d2ff;padding:10px 28px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;touch-action:manipulation;">+ New Level</button>
+    </div>
+  </div>
+</div>
+
+<div id="levelSelectOverlay">
+  <button class="ls-close" id="btnLsClose">&times;</button>
+  <div id="levelSelectInner">
+    <h2>Select Level</h2>
+    <div class="ls-grid" id="lsGrid"></div>
+  </div>
+</div>
+
+<div id="winOverlay">
+  <div id="winPanel">
+    <h2>Level Complete!</h2>
+    <p id="winMsg">All targets destroyed.</p>
+    <button id="btnWinNext">Next Level &#9654;</button>
+  </div>
+</div>
+
+<script>window.API_BASE = window.API_BASE || '';</script>
+<script src="config.js"></script>
+<script>
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('gesturechange', e => e.preventDefault());
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+// ─── Vector Math ────────────────────────────────────────────────────
+const V = {
+  add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y }),
+  sub: (a, b) => ({ x: a.x - b.x, y: a.y - b.y }),
+  mul: (a, s) => ({ x: a.x * s, y: a.y * s }),
+  dot: (a, b) => a.x * b.x + a.y * b.y,
+  len: (a) => Math.sqrt(a.x * a.x + a.y * a.y),
+  norm: (a) => { const l = V.len(a) || 1; return { x: a.x / l, y: a.y / l }; },
+  rot: (a, ang) => {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    return { x: a.x * c - a.y * s, y: a.x * s + a.y * c };
+  },
+  reflect: (d, n) => {
+    const dn = 2 * V.dot(d, n);
+    return { x: d.x - dn * n.x, y: d.y - dn * n.y };
+  },
+  dist: (a, b) => V.len(V.sub(a, b)),
+  perp: (a) => ({ x: -a.y, y: a.x }),
+  angle: (a) => Math.atan2(a.y, a.x),
+  fromAngle: (ang) => ({ x: Math.cos(ang), y: Math.sin(ang) }),
+};
+
+// ─── Constants ──────────────────────────────────────────────────────
+let GRID = 60;
+const BASE_GRID = 60;
+const MAX_BOUNCES = 25;
+const DEG15 = Math.PI / 12;
+function S(v) { return v * GRID / BASE_GRID; }
+const COLORS = {
+  white: '#e0f0ff',
+  red: '#ff3355',
+  green: '#33ff88',
+  blue: '#3388ff',
+};
+const GLOW_COLORS = {
+  white: [200, 225, 255],
+  red: [255, 50, 85],
+  green: [50, 255, 136],
+  blue: [50, 136, 255],
+};
+
+// ─── Game Objects ───────────────────────────────────────────────────
+class GameObject {
+  constructor(type, x, y, angle = 0, opts = {}) {
+    this.type = type;
+    this.x = x; this.y = y;
+    this.angle = angle;
+    this.draggable = opts.draggable || false;
+    this.rotatable = opts.rotatable || false;
+    this.color = opts.color || 'white';
+    this.hit = false;
+    this.hitTime = 0;
+    this.startX = x; this.startY = y; this.startAngle = angle;
+  }
+
+  reset() {
+    this.x = this.startX; this.y = this.startY; this.angle = this.startAngle;
+    this.hit = false; this.hitTime = 0;
+  }
+
+  getSegment(halfLen) {
+    const dir = V.fromAngle(this.angle);
+    const perp = V.perp(dir);
+    return {
+      a: { x: this.x - perp.x * halfLen, y: this.y - perp.y * halfLen },
+      b: { x: this.x + perp.x * halfLen, y: this.y + perp.y * halfLen },
+      normal: dir,
+    };
+  }
+
+  containsPoint(px, py, radius = 25) {
+    return V.dist({ x: px, y: py }, { x: this.x, y: this.y }) < radius;
+  }
+}
+
+// ─── Ray Tracing ────────────────────────────────────────────────────
+function raySegmentIntersect(ro, rd, a, b) {
+  const ab = V.sub(b, a);
+  const denom = rd.x * ab.y - rd.y * ab.x;
+  if (Math.abs(denom) < 1e-9) return null;
+  const oa = V.sub(a, ro);
+  const t = (oa.x * ab.y - oa.y * ab.x) / denom;
+  const u = (oa.x * rd.y - oa.y * rd.x) / denom;
+  if (t > 0.5 && u >= 0 && u <= 1) return { t, u, point: V.add(ro, V.mul(rd, t)) };
+  return null;
+}
+
+function rayCircleIntersect(ro, rd, cx, cy, r) {
+  const oc = V.sub(ro, { x: cx, y: cy });
+  const a = V.dot(rd, rd);
+  const b = 2 * V.dot(oc, rd);
+  const c = V.dot(oc, oc) - r * r;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return null;
+  const t = (-b - Math.sqrt(disc)) / (2 * a);
+  if (t > 0.5) return { t, point: V.add(ro, V.mul(rd, t)) };
+  return null;
+}
+
+function traceBeams(objects, canvasW, canvasH) {
+  const beams = [];
+  const lasers = objects.filter(o => o.type === 'laser');
+
+  for (const laser of lasers) {
+    const startDir = V.fromAngle(laser.angle);
+    const stack = [{ origin: { x: laser.x, y: laser.y }, dir: startDir, color: 'white', depth: 0 }];
+
+    while (stack.length > 0) {
+      const { origin, dir, color, depth } = stack.pop();
+      if (depth > MAX_BOUNCES) continue;
+
+      let closest = null;
+      let closestObj = null;
+      let closestT = Infinity;
+
+      for (const obj of objects) {
+        if (obj.type === 'laser') continue;
+        let hit = null;
+
+        if (obj.type === 'mirror' || obj.type === 'splitter') {
+          const seg = obj.getSegment(S(28));
+          hit = raySegmentIntersect(origin, dir, seg.a, seg.b);
+        } else if (obj.type === 'wall') {
+          const seg = obj.getSegment(S(30));
+          hit = raySegmentIntersect(origin, dir, seg.a, seg.b);
+        } else if (obj.type === 'target') {
+          hit = rayCircleIntersect(origin, dir, obj.x, obj.y, S(18));
+        } else if (obj.type === 'prism') {
+          hit = rayCircleIntersect(origin, dir, obj.x, obj.y, S(22));
+        } else if (obj.type === 'filter') {
+          const seg = obj.getSegment(S(24));
+          hit = raySegmentIntersect(origin, dir, seg.a, seg.b);
+        }
+
+        if (hit && hit.t < closestT) {
+          closestT = hit.t;
+          closest = hit;
+          closestObj = obj;
+        }
+      }
+
+      if (closest) {
+        beams.push({ from: origin, to: closest.point, color });
+
+        if (closestObj.type === 'mirror') {
+          const seg = closestObj.getSegment(S(28));
+          const segDir = V.norm(V.sub(seg.b, seg.a));
+          let normal = V.perp(segDir);
+          if (V.dot(dir, normal) > 0) normal = V.mul(normal, -1);
+          const reflected = V.reflect(dir, normal);
+          stack.push({ origin: closest.point, dir: V.norm(reflected), color, depth: depth + 1 });
+        } else if (closestObj.type === 'splitter') {
+          const seg = closestObj.getSegment(S(28));
+          const segDir = V.norm(V.sub(seg.b, seg.a));
+          let normal = V.perp(segDir);
+          if (V.dot(dir, normal) > 0) normal = V.mul(normal, -1);
+          const reflected = V.reflect(dir, normal);
+          stack.push({ origin: closest.point, dir: V.norm(reflected), color, depth: depth + 1 });
+          stack.push({ origin: closest.point, dir: V.norm(dir), color, depth: depth + 1 });
+        } else if (closestObj.type === 'prism') {
+          if (color === 'white') {
+            const baseAngle = V.angle(dir);
+            const spread = 0.25;
+            stack.push({ origin: closest.point, dir: V.fromAngle(baseAngle - spread), color: 'red', depth: depth + 1 });
+            stack.push({ origin: closest.point, dir: V.fromAngle(baseAngle), color: 'green', depth: depth + 1 });
+            stack.push({ origin: closest.point, dir: V.fromAngle(baseAngle + spread), color: 'blue', depth: depth + 1 });
+          } else {
+            stack.push({ origin: closest.point, dir: V.norm(dir), color, depth: depth + 1 });
+          }
+        } else if (closestObj.type === 'filter') {
+          if (color === closestObj.color || color === 'white') {
+            stack.push({ origin: closest.point, dir: V.norm(dir), color: closestObj.color, depth: depth + 1 });
+          }
+        } else if (closestObj.type === 'target') {
+          if (closestObj.color === 'white' || closestObj.color === color || color === 'white') {
+            closestObj.hit = true;
+            closestObj.hitTime = performance.now();
+          }
+        }
+      } else {
+        const farT = Math.max(canvasW, canvasH) * 2;
+        beams.push({ from: origin, to: V.add(origin, V.mul(dir, farT)), color });
+      }
+    }
+  }
+  return beams;
+}
+
+// ─── Particle System ────────────────────────────────────────────────
+class Particle {
+  constructor(x, y, color) {
+    this.x = x; this.y = y;
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 1 + Math.random() * 3;
+    this.vx = Math.cos(ang) * spd;
+    this.vy = Math.sin(ang) * spd;
+    this.life = 1;
+    this.decay = 0.015 + Math.random() * 0.02;
+    this.color = color;
+    this.size = 2 + Math.random() * 3;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vx *= 0.98; this.vy *= 0.98;
+    this.life -= this.decay;
+  }
+}
+
+const particles = [];
+
+function spawnParticles(x, y, color, count = 12) {
+  const gc = GLOW_COLORS[color] || GLOW_COLORS.white;
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(x, y, gc));
+  }
+}
+
+// ─── Level Definitions ─────────────────────────────────────────────
+const LEVELS = [
+  {
+    name: 'Tutorial',
+    objects: [
+      { type: 'laser', x: 2, y: 4, angle: 0 },
+      { type: 'mirror', x: 8, y: 4, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'target', x: 8, y: 8 },
+    ],
+  },
+  {
+    name: 'Corner Shot',
+    objects: [
+      { type: 'laser', x: 1, y: 2, angle: 0 },
+      { type: 'wall', x: 5, y: 2, angle: Math.PI / 2 },
+      { type: 'wall', x: 5, y: 4, angle: Math.PI / 2 },
+      { type: 'mirror', x: 4, y: 2, angle: -Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 4, y: 7, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'target', x: 9, y: 7 },
+    ],
+  },
+  {
+    name: 'Split Decision',
+    objects: [
+      { type: 'laser', x: 1, y: 4, angle: 0 },
+      { type: 'splitter', x: 5, y: 4, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'target', x: 9, y: 4 },
+      { type: 'target', x: 5, y: 8 },
+    ],
+  },
+  {
+    name: 'Prism Basics',
+    objects: [
+      { type: 'laser', x: 1, y: 4, angle: 0 },
+      { type: 'prism', x: 5, y: 4, angle: 0, draggable: true, rotatable: true },
+      { type: 'target', x: 10, y: 2, color: 'red' },
+      { type: 'target', x: 10, y: 4, color: 'green' },
+      { type: 'target', x: 10, y: 6, color: 'blue' },
+    ],
+  },
+  {
+    name: 'Filter Maze',
+    objects: [
+      { type: 'laser', x: 1, y: 4, angle: 0 },
+      { type: 'prism', x: 5, y: 4, angle: 0, draggable: true, rotatable: true },
+      { type: 'filter', x: 7, y: 3, angle: 0, color: 'red' },
+      { type: 'filter', x: 7, y: 5, angle: 0, color: 'blue' },
+      { type: 'mirror', x: 8, y: 4, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'target', x: 10, y: 2, color: 'red' },
+      { type: 'target', x: 8, y: 7, color: 'green' },
+      { type: 'target', x: 10, y: 6, color: 'blue' },
+    ],
+  },
+  {
+    name: 'Complex Reflections',
+    objects: [
+      { type: 'laser', x: 1, y: 1, angle: Math.PI / 4 },
+      { type: 'wall', x: 5, y: 3, angle: 0 },
+      { type: 'wall', x: 5, y: 5, angle: 0 },
+      { type: 'mirror', x: 4, y: 4, angle: 0, draggable: true, rotatable: true },
+      { type: 'mirror', x: 7, y: 2, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 9, y: 6, angle: -Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'target', x: 9, y: 2 },
+      { type: 'target', x: 3, y: 8 },
+    ],
+  },
+  {
+    name: 'Full Spectrum',
+    objects: [
+      { type: 'laser', x: 1, y: 4, angle: 0 },
+      { type: 'prism', x: 5, y: 4, angle: 0, draggable: true, rotatable: true },
+      { type: 'filter', x: 7, y: 3, angle: 0, color: 'red' },
+      { type: 'filter', x: 7, y: 5, angle: 0, color: 'blue' },
+      { type: 'splitter', x: 9, y: 4, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 9, y: 7, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'target', x: 11, y: 2, color: 'red' },
+      { type: 'target', x: 12, y: 4, color: 'green' },
+      { type: 'target', x: 11, y: 6, color: 'blue' },
+      { type: 'target', x: 12, y: 7, color: 'green' },
+    ],
+  },
+  {
+    name: 'Zigzag',
+    objects: [
+      { type: 'laser', x: 1, y: 1, angle: 0 },
+      { type: 'mirror', x: 5, y: 1, angle: Math.PI / 4, draggable: false, rotatable: false },
+      { type: 'mirror', x: 5, y: 5, angle: -Math.PI / 4, draggable: false, rotatable: false },
+      { type: 'mirror', x: 9, y: 5, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'wall', x: 7, y: 3, angle: Math.PI / 2 },
+      { type: 'target', x: 9, y: 1 },
+      { type: 'target', x: 9, y: 9 },
+    ],
+  },
+  {
+    name: 'Color Sorting',
+    objects: [
+      { type: 'laser', x: 1, y: 3, angle: 0 },
+      { type: 'prism', x: 4, y: 3, angle: 0 },
+      { type: 'filter', x: 7, y: 1, angle: Math.PI / 2, color: 'red' },
+      { type: 'filter', x: 7, y: 5, angle: Math.PI / 2, color: 'blue' },
+      { type: 'mirror', x: 6, y: 2, angle: 0, draggable: true, rotatable: true },
+      { type: 'mirror', x: 6, y: 4, angle: 0, draggable: true, rotatable: true },
+      { type: 'target', x: 10, y: 1, color: 'red' },
+      { type: 'target', x: 10, y: 3, color: 'green' },
+      { type: 'target', x: 10, y: 5, color: 'blue' },
+    ],
+  },
+  {
+    name: 'Splitter Chain',
+    objects: [
+      { type: 'laser', x: 1, y: 4, angle: 0 },
+      { type: 'splitter', x: 4, y: 4, angle: Math.PI / 4 },
+      { type: 'splitter', x: 7, y: 4, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 4, y: 1, angle: 0, draggable: true, rotatable: true },
+      { type: 'mirror', x: 7, y: 1, angle: 0, draggable: true, rotatable: true },
+      { type: 'wall', x: 9, y: 3, angle: Math.PI / 2 },
+      { type: 'wall', x: 9, y: 5, angle: Math.PI / 2 },
+      { type: 'target', x: 10, y: 4 },
+      { type: 'target', x: 4, y: 8 },
+      { type: 'target', x: 7, y: 8 },
+    ],
+  },
+  {
+    name: 'The Maze',
+    objects: [
+      { type: 'laser', x: 1, y: 1, angle: Math.PI / 2 },
+      { type: 'wall', x: 3, y: 3, angle: 0 },
+      { type: 'wall', x: 5, y: 3, angle: 0 },
+      { type: 'wall', x: 3, y: 6, angle: 0 },
+      { type: 'wall', x: 5, y: 6, angle: 0 },
+      { type: 'wall', x: 7, y: 6, angle: 0 },
+      { type: 'mirror', x: 1, y: 5, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 4, y: 5, angle: 0, draggable: true, rotatable: true },
+      { type: 'mirror', x: 7, y: 3, angle: 0, draggable: true, rotatable: true },
+      { type: 'mirror', x: 9, y: 5, angle: 0, draggable: true, rotatable: true },
+      { type: 'target', x: 9, y: 1 },
+      { type: 'target', x: 9, y: 8 },
+    ],
+  },
+  {
+    name: 'Prism Relay',
+    objects: [
+      { type: 'laser', x: 1, y: 4, angle: 0 },
+      { type: 'prism', x: 4, y: 4, angle: 0, draggable: true, rotatable: true },
+      { type: 'mirror', x: 7, y: 2, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 7, y: 6, angle: -Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'splitter', x: 10, y: 2, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'splitter', x: 10, y: 6, angle: -Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'filter', x: 12, y: 4, angle: Math.PI / 2, color: 'green' },
+      { type: 'target', x: 12, y: 1, color: 'red' },
+      { type: 'target', x: 14, y: 4, color: 'green' },
+      { type: 'target', x: 12, y: 7, color: 'blue' },
+      { type: 'target', x: 10, y: 4 },
+    ],
+  },
+  {
+    name: 'Grand Finale',
+    objects: [
+      { type: 'laser', x: 1, y: 3, angle: 0 },
+      { type: 'prism', x: 4, y: 3, angle: 0, draggable: true, rotatable: true },
+      { type: 'splitter', x: 7, y: 1, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 10, y: 1, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 3, y: 7, angle: -Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'mirror', x: 10, y: 7, angle: -Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'filter', x: 7, y: 5, angle: Math.PI / 2, color: 'green' },
+      { type: 'wall', x: 6, y: 3, angle: Math.PI / 2 },
+      { type: 'target', x: 12, y: 1, color: 'red' },
+      { type: 'target', x: 7, y: 7, color: 'green' },
+      { type: 'target', x: 12, y: 7, color: 'blue' },
+      { type: 'target', x: 10, y: 4, color: 'red' },
+      { type: 'target', x: 1, y: 7, color: 'blue' },
+    ],
+  },
+];
+
+// ─── Game State ─────────────────────────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+// ─── API (database) sync: same code works localhost + deployed ──────
+const API_BASE = (typeof window !== 'undefined' && window.API_BASE) || ''; // set in config.js for Deploy Now static + external API
+async function apiFetch(path, opts = {}) {
+  try {
+    const r = await fetch(API_BASE + path, { ...opts, headers: { 'Content-Type': 'application/json', ...opts.headers } });
+    return r;
+  } catch (_) { return null; }
+}
+async function loadProgressFromApi() {
+  const r = await apiFetch('/api/progress');
+  if (r && r.ok) {
+    const d = await r.json();
+    return { completedLevels: d.completedLevels || [], currentLevel: Number(d.currentLevel) || 0 };
+  }
+  return null;
+}
+async function saveProgressToApi() {
+  const completed = getCompletedLevels();
+  await apiFetch('/api/progress', { method: 'POST', body: JSON.stringify({ completedLevels: completed, currentLevel }) });
+}
+async function loadCustomLevelsFromApi() {
+  const r = await apiFetch('/api/custom-levels');
+  if (r && r.ok) {
+    const list = await r.json();
+    return list.map((l) => ({ id: l.id, name: l.name, objects: l.objects || [] }));
+  }
+  return null;
+}
+async function saveCustomLevelToApi(level) {
+  await apiFetch('/api/custom-levels', { method: 'POST', body: JSON.stringify({ id: level.id, name: level.name, objects: level.objects }) });
+}
+async function deleteCustomLevelOnApi(id) {
+  await apiFetch('/api/custom-levels/' + encodeURIComponent(id), { method: 'DELETE' });
+}
+
+function getCompletedLevels() {
+  try { return JSON.parse(localStorage.getItem('laserLabyrinthCompleted') || '[]'); }
+  catch { return []; }
+}
+function markLevelCompleted(idx) {
+  const completed = getCompletedLevels();
+  if (!completed.includes(idx)) {
+    completed.push(idx);
+    localStorage.setItem('laserLabyrinthCompleted', JSON.stringify(completed));
+  }
+  localStorage.setItem('laserLabyrinthLevel', String(idx + 1));
+  saveProgressToApi();
+}
+let currentLevel = parseInt(localStorage.getItem('laserLabyrinthLevel') || '0', 10);
+let objects = [];
+let beams = [];
+let dragging = null;
+let dragOffset = { x: 0, y: 0 };
+let hoveredObj = null;
+let selectedObj = null;
+let levelWon = false;
+let winShownTime = 0;
+let editorMode = false;
+let gridOffsetX = 0, gridOffsetY = 0;
+
+function resize() {
+  const wrap = document.getElementById('gameCanvasWrap');
+  if (wrap && wrap.clientWidth && wrap.clientHeight) {
+    W = wrap.clientWidth;
+    H = wrap.clientHeight;
+    canvas.width = W;
+    canvas.height = H;
+  } else {
+    const fallbackW = window.innerWidth || 800;
+    const fallbackH = (window.innerHeight || 600) - 120;
+    W = fallbackW;
+    H = Math.max(200, fallbackH);
+    canvas.width = W;
+    canvas.height = H;
+  }
+  if (editorMode) return;
+  if (LEVELS && LEVELS.length > 0) loadLevel(currentLevel);
+}
+window.addEventListener('resize', resize);
+resize();
+// If dimensions were 0 (e.g. before layout), try again after paint and on load
+requestAnimationFrame(function() { if (!W || !H) resize(); });
+window.addEventListener('load', function() { if (!W || !H) resize(); });
+
+function clientToCanvas(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left) * (canvas.width / rect.width),
+    y: (clientY - rect.top) * (canvas.height / rect.height),
+  };
+}
+
+function computeGrid(level) {
+  const pad = 40;
+  const playW = W - pad * 2;
+  const playH = H - pad * 2;
+  let maxGx = 0, maxGy = 0;
+  for (const o of level.objects) {
+    if (o.x > maxGx) maxGx = o.x;
+    if (o.y > maxGy) maxGy = o.y;
+  }
+  maxGx = Math.max(maxGx, 1) + 1;
+  maxGy = Math.max(maxGy, 1) + 1;
+  GRID = Math.min(60, Math.floor(playW / maxGx), Math.floor(playH / maxGy));
+  GRID = Math.max(GRID, 20);
+  gridOffsetX = Math.floor((W - maxGx * GRID) / 2);
+  gridOffsetY = Math.floor((H - maxGy * GRID) / 2);
+}
+
+function gridToScreen(gx, gy) {
+  return { x: gridOffsetX + gx * GRID, y: gridOffsetY + gy * GRID };
+}
+
+function loadLevel(idx) {
+  currentLevel = Math.max(0, Math.min(idx, LEVELS.length - 1));
+  const level = LEVELS[currentLevel];
+  computeGrid(level);
+  objects = level.objects.map(o => {
+    const pos = gridToScreen(o.x, o.y);
+    return new GameObject(o.type, pos.x, pos.y, o.angle || 0, {
+      draggable: o.draggable || false,
+      rotatable: o.rotatable || false,
+      color: o.color || 'white',
+    });
+  });
+  levelWon = false;
+  selectedObj = null;
+  document.getElementById('winOverlay').classList.remove('show');
+  document.getElementById('levelNum').textContent = currentLevel + 1;
+  document.getElementById('levelName').textContent = level.name;
+  updateToolbar();
+  updateHelpText();
+  if (!editorMode) {
+    localStorage.setItem('laserLabyrinthLevel', String(currentLevel));
+    saveProgressToApi();
+  }
+}
+
+function resetLevel() {
+  objects.forEach(o => o.reset());
+  levelWon = false;
+  selectedObj = null;
+  document.getElementById('winOverlay').classList.remove('show');
+}
+
+function updateToolbar() {
+  const bar = document.getElementById('bottomBar');
+  bar.innerHTML = '';
+  const types = ['mirror', 'prism', 'splitter', 'filter'];
+  const icons = {
+    mirror: drawMirrorIcon,
+    prism: drawPrismIcon,
+    splitter: drawSplitterIcon,
+    filter: drawFilterIcon,
+  };
+  const typesInLevel = new Set(objects.filter(o => o.draggable).map(o => o.type));
+  for (const t of types) {
+    const div = document.createElement('div');
+    div.className = 'tool-item' + (typesInLevel.has(t) ? ' available' : '');
+    const iconCanvas = document.createElement('canvas');
+    iconCanvas.width = 32; iconCanvas.height = 32;
+    const iconCtx = iconCanvas.getContext('2d');
+    if (icons[t]) icons[t](iconCtx, 16, 16);
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'icon';
+    iconDiv.appendChild(iconCanvas);
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = t;
+    div.appendChild(iconDiv);
+    div.appendChild(label);
+    bar.appendChild(div);
+  }
+
+  const rotateInfo = document.createElement('div');
+  rotateInfo.style.cssText = 'display:flex;gap:6px;margin-left:20px;align-items:center;pointer-events:auto;';
+  const rotLeft = document.createElement('button');
+  rotLeft.type = 'button';
+  rotLeft.textContent = '↶ Rotate';
+  rotLeft.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const t = hoveredObj || selectedObj; if (t && t.rotatable) t.angle -= DEG15; };
+  const rotRight = document.createElement('button');
+  rotRight.type = 'button';
+  rotRight.textContent = 'Rotate ↷';
+  rotRight.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const t = hoveredObj || selectedObj; if (t && t.rotatable) t.angle += DEG15; };
+  rotateInfo.appendChild(rotLeft);
+  rotateInfo.appendChild(rotRight);
+  bar.appendChild(rotateInfo);
+}
+
+function updateHelpText() {
+  const el = document.getElementById('helpText');
+  if (currentLevel === 0) {
+    el.textContent = 'Drag to move, click to rotate. Arrow keys also rotate. Aim the laser at the target!';
+  } else {
+    el.textContent = 'Drag to move \u2022 Click to rotate \u2022 Arrow keys also rotate \u2022 Hit all targets!';
+  }
+}
+
+// ─── Mini icon renderers for toolbar ────────────────────────────────
+function drawMirrorIcon(ctx, cx, cy) {
+  ctx.save();
+  ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - 10, cy + 10); ctx.lineTo(cx + 10, cy - 10); ctx.stroke();
+  ctx.strokeStyle = 'rgba(136,204,255,0.3)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(cx - 10, cy + 10); ctx.lineTo(cx + 10, cy - 10); ctx.stroke();
+  ctx.restore();
+}
+
+function drawPrismIcon(ctx, cx, cy) {
+  ctx.save();
+  ctx.strokeStyle = '#e0f0ff'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 10); ctx.lineTo(cx + 10, cy + 8); ctx.lineTo(cx - 10, cy + 8); ctx.closePath();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(200,230,255,0.1)'; ctx.fill();
+  ctx.restore();
+}
+
+function drawSplitterIcon(ctx, cx, cy) {
+  ctx.save();
+  ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(cx - 10, cy + 10); ctx.lineTo(cx + 10, cy - 10); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawFilterIcon(ctx, cx, cy) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,100,100,0.4)';
+  ctx.fillRect(cx - 10, cy - 8, 20, 16);
+  ctx.strokeStyle = '#ff6666'; ctx.lineWidth = 1;
+  ctx.strokeRect(cx - 10, cy - 8, 20, 16);
+  ctx.restore();
+}
+
+// ─── Input Handling ─────────────────────────────────────────────────
+let dragStartPos = { x: 0, y: 0 };
+canvas.addEventListener('mousedown', e => {
+  if (editorMode && !playTestMode) { handleEditorMouseDown(e); return; }
+  if (levelWon) return;
+  const { x: mx, y: my } = clientToCanvas(e.clientX, e.clientY);
+  const hitRadius = Math.max(S(30), 28);
+  for (let i = objects.length - 1; i >= 0; i--) {
+    const obj = objects[i];
+    if (obj.draggable && obj.containsPoint(mx, my, hitRadius)) {
+      dragging = obj;
+      selectedObj = obj;
+      dragStartPos = { x: mx, y: my };
+      dragOffset.x = mx - obj.x;
+      dragOffset.y = my - obj.y;
+      hoveredObj = obj;
+      canvas.style.cursor = 'grabbing';
+      document.addEventListener('mousemove', onDocumentMouseMove);
+      document.addEventListener('mouseup', onCanvasMouseUp);
+      return;
+    }
+  }
+  selectedObj = null;
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (editorMode && !playTestMode) { handleEditorMouseMove(e); return; }
+  const { x: mx, y: my } = clientToCanvas(e.clientX, e.clientY);
+  if (dragging) {
+    dragging.x = Math.max(S(30), Math.min(W - S(30), mx - dragOffset.x));
+    dragging.y = Math.max(20, Math.min(H - 20, my - dragOffset.y));
+    return;
+  }
+  let found = null;
+  const hitRadius = Math.max(S(30), 28);
+  for (let i = objects.length - 1; i >= 0; i--) {
+    if (objects[i].draggable && objects[i].containsPoint(mx, my, hitRadius)) {
+      found = objects[i];
+      break;
+    }
+  }
+  hoveredObj = found;
+  canvas.style.cursor = found ? 'grab' : 'default';
+});
+
+function onCanvasMouseUp(e) {
+  if (editorMode && !playTestMode) { handleEditorMouseUp(e); return; }
+  if (dragging) {
+    const { x: mx, y: my } = clientToCanvas(e.clientX, e.clientY);
+    const dist = Math.hypot(mx - dragStartPos.x, my - dragStartPos.y);
+    if (dist < 5 && dragging.rotatable) {
+      dragging.angle += DEG15;
+    }
+    dragging = null;
+    canvas.style.cursor = hoveredObj ? 'grab' : 'default';
+    document.removeEventListener('mousemove', onDocumentMouseMove);
+    document.removeEventListener('mouseup', onDocumentMouseUp);
+  }
+}
+function onDocumentMouseMove(e) {
+  if (!dragging) return;
+  const { x: mx, y: my } = clientToCanvas(e.clientX, e.clientY);
+  dragging.x = Math.max(S(30), Math.min(W - S(30), mx - dragOffset.x));
+  dragging.y = Math.max(20, Math.min(H - 20, my - dragOffset.y));
+}
+canvas.addEventListener('mouseup', onCanvasMouseUp);
+document.addEventListener('mouseup', e => {
+  if (dragging && e.target !== canvas) onCanvasMouseUp(e);
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const target = hoveredObj || selectedObj;
+  if (target && target.rotatable) {
+    target.angle += (e.deltaY > 0 ? 1 : -1) * DEG15;
+  }
+}, { passive: false });
+
+document.addEventListener('keydown', e => {
+  const target = hoveredObj || selectedObj;
+  if (target && target.rotatable) {
+    if (e.key === 'ArrowLeft' || e.key === 'a') { target.angle -= DEG15; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd') { target.angle += DEG15; e.preventDefault(); }
+  }
+});
+
+// Touch support
+let touchStartPos = { x: 0, y: 0 };
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (editorMode && !playTestMode) {
+    handleEditorMouseDown({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+    return;
+  }
+  if (levelWon) return;
+  const t = e.touches[0];
+  const { x: mx, y: my } = clientToCanvas(t.clientX, t.clientY);
+  touchStartPos = { x: mx, y: my };
+  const hitRadius = Math.max(S(30), 40);
+  for (let i = objects.length - 1; i >= 0; i--) {
+    const obj = objects[i];
+    if (obj.draggable && obj.containsPoint(mx, my, hitRadius)) {
+      dragging = obj;
+      selectedObj = obj;
+      dragOffset.x = mx - obj.x;
+      dragOffset.y = my - obj.y;
+      hoveredObj = obj;
+      return;
+    }
+  }
+  selectedObj = null;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  if (editorMode && !playTestMode) {
+    handleEditorMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+    e.preventDefault();
+    return;
+  }
+  if (dragging) {
+    const t = e.touches[0];
+    const { x: tx, y: ty } = clientToCanvas(t.clientX, t.clientY);
+    dragging.x = Math.max(S(30), Math.min(W - S(30), tx - dragOffset.x));
+    dragging.y = Math.max(20, Math.min(H - 20, ty - dragOffset.y));
+    e.preventDefault();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  if (editorMode && !playTestMode) {
+    handleEditorMouseUp({ clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY });
+    return;
+  }
+  if (dragging) {
+    const t = e.changedTouches[0];
+    const { x: tx, y: ty } = clientToCanvas(t.clientX, t.clientY);
+    const dist = Math.hypot(tx - touchStartPos.x, ty - touchStartPos.y);
+    if (dist < 10 && dragging.rotatable) {
+      dragging.angle += DEG15;
+    }
+    dragging = null;
+  }
+});
+
+// ─── Level Select ────────────────────────────────────────────────────
+async function openLevelSelect() {
+  const grid = document.getElementById('lsGrid');
+  const completed = getCompletedLevels();
+  grid.innerHTML = '';
+  LEVELS.forEach((level, i) => {
+    const card = document.createElement('div');
+    card.className = 'ls-card' + (i === currentLevel && !editorMode ? ' current' : '');
+    const done = completed.includes(i);
+    card.innerHTML = `
+      <div class="ls-badge">${done ? '\u2705' : ''}</div>
+      <div class="ls-num">${i + 1}</div>
+      <div class="ls-name">${level.name}</div>
+    `;
+    card.onclick = () => {
+      closeLevelSelect();
+      if (editorMode) exitEditor();
+      loadLevel(i);
+    };
+    grid.appendChild(card);
+  });
+
+  const customs = (await loadCustomLevelsFromApi()) ?? getCustomLevels();
+  if (customs.length > 0) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'grid-column:1/-1;text-align:center;color:rgba(100,210,255,0.5);font-size:12px;padding:12px 0 4px;text-transform:uppercase;letter-spacing:1px;';
+    sep.textContent = 'Custom Levels';
+    grid.appendChild(sep);
+    customs.forEach(lvl => {
+      const card = document.createElement('div');
+      card.className = 'ls-card';
+      card.innerHTML = `
+        <div class="ls-badge">\u270E</div>
+        <div class="ls-num" style="font-size:18px">\u2605</div>
+        <div class="ls-name">${lvl.name}</div>
+      `;
+      card.onclick = () => {
+        closeLevelSelect();
+        enterEditor(lvl, lvl.id);
+        startPlayTest();
+      };
+      grid.appendChild(card);
+    });
+  }
+
+  document.getElementById('levelSelectOverlay').classList.add('show');
+}
+function closeLevelSelect() {
+  document.getElementById('levelSelectOverlay').classList.remove('show');
+}
+
+// ─── Button Handlers ────────────────────────────────────────────────
+document.getElementById('btnLevels').onclick = openLevelSelect;
+document.getElementById('btnLsClose').onclick = closeLevelSelect;
+document.getElementById('btnReset').onclick = resetLevel;
+document.getElementById('btnPrev').onclick = () => loadLevel(currentLevel - 1);
+document.getElementById('btnNext').onclick = () => loadLevel(currentLevel + 1);
+document.getElementById('btnWinNext').onclick = () => loadLevel(currentLevel + 1);
+
+// ─── Rendering ──────────────────────────────────────────────────────
+function drawGrid() {
+  ctx.fillStyle = 'rgba(100, 180, 255, 0.06)';
+  for (let x = GRID; x < W; x += GRID) {
+    for (let y = GRID; y < H; y += GRID) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawBeam(from, to, color) {
+  const gc = GLOW_COLORS[color] || GLOW_COLORS.white;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = COLORS[color] || COLORS.white;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawLaser(obj) {
+  const dir = V.fromAngle(obj.angle);
+  ctx.save();
+
+  ctx.shadowColor = '#64d2ff';
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = '#1a2a40';
+  ctx.strokeStyle = '#64d2ff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(obj.x, obj.y, S(14), 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#64d2ff';
+  ctx.beginPath();
+  ctx.arc(obj.x + dir.x * S(10), obj.y + dir.y * S(10), S(4), 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(100,210,255,0.3)';
+  ctx.beginPath();
+  ctx.arc(obj.x + dir.x * S(10), obj.y + dir.y * S(10), S(7), 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawMirror(obj) {
+  const seg = obj.getSegment(S(28));
+  const isHovered = hoveredObj === obj;
+  const isDraggable = obj.draggable;
+
+  ctx.save();
+  if (isHovered) {
+    ctx.shadowColor = '#88ccff';
+    ctx.shadowBlur = 12;
+  } else if (isDraggable) {
+    const pulse = Math.sin(performance.now() * 0.003) * 0.15 + 0.85;
+    ctx.globalAlpha = pulse;
+  }
+
+  ctx.strokeStyle = isHovered ? '#aaddff' : '#6699cc';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x, seg.a.y);
+  ctx.lineTo(seg.b.x, seg.b.y);
+  ctx.stroke();
+
+  ctx.strokeStyle = isHovered ? 'rgba(170,220,255,0.25)' : 'rgba(100,150,200,0.15)';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x, seg.a.y);
+  ctx.lineTo(seg.b.x, seg.b.y);
+  ctx.stroke();
+
+  const bDir = V.norm(V.sub(seg.b, seg.a));
+  const backOff = V.perp(bDir);
+  ctx.strokeStyle = 'rgba(100,150,200,0.2)';
+  ctx.lineWidth = 1;
+  for (let i = -2; i <= 2; i++) {
+    const p = V.add({ x: obj.x, y: obj.y }, V.mul(bDir, i * S(10)));
+    ctx.beginPath();
+    ctx.moveTo(p.x + backOff.x * S(4), p.y + backOff.y * S(4));
+    ctx.lineTo(p.x + backOff.x * S(10), p.y + backOff.y * S(10));
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawSplitter(obj) {
+  const seg = obj.getSegment(S(28));
+  const isHovered = hoveredObj === obj;
+
+  ctx.save();
+  if (isHovered) {
+    ctx.shadowColor = '#88ccff';
+    ctx.shadowBlur = 12;
+  }
+
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = isHovered ? '#aaddff' : '#5588aa';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x, seg.a.y);
+  ctx.lineTo(seg.b.x, seg.b.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = 'rgba(85,136,170,0.15)';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x, seg.a.y);
+  ctx.lineTo(seg.b.x, seg.b.y);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawPrism(obj) {
+  const isHovered = hoveredObj === obj;
+  const size = S(22);
+  ctx.save();
+  ctx.translate(obj.x, obj.y);
+  ctx.rotate(obj.angle);
+
+  if (isHovered) {
+    ctx.shadowColor = '#a0c0e0';
+    ctx.shadowBlur = 4;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(0, -size);
+  ctx.lineTo(size * 0.866, size * 0.5);
+  ctx.lineTo(-size * 0.866, size * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(180, 210, 255, 0.04)';
+  ctx.fill();
+  ctx.strokeStyle = isHovered ? '#c0e0ff' : 'rgba(200,230,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawTarget(obj) {
+  const pulse = Math.sin(performance.now() * 0.004) * 0.2 + 0.8;
+  const gc = GLOW_COLORS[obj.color] || GLOW_COLORS.white;
+  const colStr = `rgb(${gc[0]},${gc[1]},${gc[2]})`;
+
+  ctx.save();
+
+  if (obj.hit) {
+    ctx.shadowColor = colStr;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = colStr;
+    ctx.globalAlpha = 0.2;
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, S(14) * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = colStr;
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, S(10), 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = `rgba(${gc[0]},${gc[1]},${gc[2]},${0.4 + pulse * 0.2})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, S(14), 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, S(6), 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = `rgba(${gc[0]},${gc[1]},${gc[2]},0.15)`;
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, S(14), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawWall(obj) {
+  const seg = obj.getSegment(S(30));
+  ctx.save();
+  ctx.strokeStyle = '#445566';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x, seg.a.y);
+  ctx.lineTo(seg.b.x, seg.b.y);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(60,80,100,0.3)';
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x, seg.a.y);
+  ctx.lineTo(seg.b.x, seg.b.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawFilter(obj) {
+  const seg = obj.getSegment(S(24));
+  const gc = GLOW_COLORS[obj.color] || GLOW_COLORS.white;
+  const isHovered = hoveredObj === obj;
+
+  ctx.save();
+  ctx.strokeStyle = `rgba(${gc[0]},${gc[1]},${gc[2]},0.7)`;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x, seg.a.y);
+  ctx.lineTo(seg.b.x, seg.b.y);
+  ctx.stroke();
+
+  ctx.fillStyle = `rgba(${gc[0]},${gc[1]},${gc[2]},0.06)`;
+  const dir = V.norm(V.sub(seg.b, seg.a));
+  const n = V.perp(dir);
+  ctx.beginPath();
+  ctx.moveTo(seg.a.x - n.x * S(6), seg.a.y - n.y * S(6));
+  ctx.lineTo(seg.b.x - n.x * S(6), seg.b.y - n.y * S(6));
+  ctx.lineTo(seg.b.x + n.x * S(6), seg.b.y + n.y * S(6));
+  ctx.lineTo(seg.a.x + n.x * S(6), seg.a.y + n.y * S(6));
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = `rgb(${p.color[0]},${p.color[1]},${p.color[2]})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = p.life * 0.3;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawSelectionRing(obj) {
+  if (!obj || !obj.draggable || obj === hoveredObj) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(100,210,255,0.35)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.arc(obj.x, obj.y, S(38), 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawRotateHint(obj) {
+  if (!obj || !obj.rotatable || dragging) return;
+  const r = S(35);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(100,210,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.arc(obj.x, obj.y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const a1 = obj.angle - 0.5;
+  const a2 = obj.angle + 0.5;
+  ctx.strokeStyle = 'rgba(100,210,255,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(obj.x, obj.y, r, a1, a2);
+  ctx.stroke();
+
+  const endX = obj.x + Math.cos(a2) * r;
+  const endY = obj.y + Math.sin(a2) * r;
+  ctx.fillStyle = 'rgba(100,210,255,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(endX - 5, endY - 3);
+  ctx.lineTo(endX - 3, endY + 4);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ─── Level Editor ───────────────────────────────────────────────────
+let editorPlaceTool = null;
+let editorSelectedObj = null;
+let editorObjects = [];
+let editorDragging = null;
+let editorDragOffset = { x: 0, y: 0 };
+let editorDragStart = null;
+let editorLevelName = 'My Level';
+let editorLevelId = null;
+let playTestMode = false;
+
+const ED_GRID = 50;
+const ED_TYPES = ['laser', 'mirror', 'prism', 'splitter', 'filter', 'wall', 'target'];
+
+function getCustomLevels() {
+  try { return JSON.parse(localStorage.getItem('laserLabyrinthCustom') || '[]'); }
+  catch { return []; }
+}
+function saveCustomLevels(levels) {
+  localStorage.setItem('laserLabyrinthCustom', JSON.stringify(levels));
+}
+
+function snapToGrid(x, y) {
+  return {
+    x: Math.round(x / ED_GRID) * ED_GRID,
+    y: Math.max(ED_GRID, Math.round(y / ED_GRID) * ED_GRID),
+  };
+}
+
+function editorComputeGridCoords(obj) {
+  const gx = Math.round((obj.x - gridOffsetX) / ED_GRID);
+  const gy = Math.round((obj.y - gridOffsetY) / ED_GRID);
+  return { x: Math.max(0, gx), y: Math.max(0, gy) };
+}
+
+function enterEditor(levelData, levelId) {
+  editorMode = true;
+  playTestMode = false;
+  editorPlaceTool = null;
+  editorSelectedObj = null;
+  editorLevelId = levelId || null;
+
+  GRID = ED_GRID;
+  gridOffsetX = ED_GRID;
+  gridOffsetY = ED_GRID;
+
+  if (levelData) {
+    editorLevelName = levelData.name || 'My Level';
+    editorObjects = levelData.objects.map(o => {
+      const obj = new GameObject(o.type, gridOffsetX + o.x * ED_GRID, gridOffsetY + o.y * ED_GRID, o.angle || 0, {
+        draggable: o.draggable || false,
+        rotatable: o.rotatable || false,
+        color: o.color || 'white',
+      });
+      return obj;
+    });
+  } else {
+    editorLevelName = 'My Level';
+    editorObjects = [];
+  }
+
+  objects = editorObjects;
+  levelWon = false;
+
+  document.getElementById('bottomBar').style.display = 'none';
+  document.getElementById('helpText').style.display = 'none';
+  document.getElementById('editorBar').classList.add('show');
+  document.getElementById('levelNum').textContent = '\u270E';
+  document.getElementById('levelName').textContent = editorLevelName;
+  document.getElementById('btnReset').style.display = 'none';
+  document.getElementById('btnPrev').style.display = 'none';
+  document.getElementById('btnNext').style.display = 'none';
+  document.getElementById('btnBuild').style.display = 'none';
+  document.getElementById('btnLevels').style.display = 'none';
+
+  buildEditorPalette();
+  updateEditorProps();
+}
+
+function exitEditor() {
+  editorMode = false;
+  playTestMode = false;
+  document.getElementById('editorBar').classList.remove('show');
+  document.getElementById('editorProps').classList.remove('show');
+  document.getElementById('bottomBar').style.display = '';
+  document.getElementById('helpText').style.display = '';
+  document.getElementById('btnReset').style.display = '';
+  document.getElementById('btnPrev').style.display = '';
+  document.getElementById('btnNext').style.display = '';
+  document.getElementById('btnBuild').style.display = '';
+  document.getElementById('btnLevels').style.display = '';
+  loadLevel(currentLevel);
+}
+
+function buildEditorPalette() {
+  const pal = document.getElementById('editorPalette');
+  pal.innerHTML = '';
+  const iconMap = { mirror: drawMirrorIcon, prism: drawPrismIcon, splitter: drawSplitterIcon, filter: drawFilterIcon };
+
+  for (const t of ED_TYPES) {
+    const div = document.createElement('div');
+    div.className = 'ed-tool' + (editorPlaceTool === t ? ' active' : '');
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'ed-icon';
+
+    if (iconMap[t]) {
+      const c = document.createElement('canvas');
+      c.width = 28; c.height = 28;
+      iconMap[t](c.getContext('2d'), 14, 14);
+      iconDiv.appendChild(c);
+    } else {
+      const labels = { laser: '\u2600', wall: '\u2588', target: '\u25CE' };
+      iconDiv.textContent = labels[t] || t[0].toUpperCase();
+      iconDiv.style.fontSize = '16px';
+      iconDiv.style.color = '#64d2ff';
+    }
+
+    const label = document.createElement('div');
+    label.className = 'ed-label';
+    label.textContent = t;
+    div.appendChild(iconDiv);
+    div.appendChild(label);
+    div.onclick = () => {
+      editorPlaceTool = editorPlaceTool === t ? null : t;
+      editorSelectedObj = null;
+      buildEditorPalette();
+      updateEditorProps();
+    };
+    pal.appendChild(div);
+  }
+}
+
+function updateEditorProps() {
+  const panel = document.getElementById('editorProps');
+  const obj = editorSelectedObj;
+  if (!obj || editorPlaceTool) {
+    panel.classList.remove('show');
+    return;
+  }
+  panel.classList.add('show');
+  document.getElementById('epTitle').textContent = obj.type.toUpperCase();
+  document.getElementById('epDraggable').checked = obj.draggable;
+  document.getElementById('epRotatable').checked = obj.rotatable;
+
+  const colorsDiv = document.getElementById('epColors');
+  colorsDiv.innerHTML = '';
+  const showColors = ['target', 'filter'].includes(obj.type);
+  colorsDiv.parentElement.style.display = showColors ? '' : 'none';
+  colorsDiv.previousElementSibling.style.display = showColors ? '' : 'none';
+
+  if (showColors) {
+    for (const c of ['white', 'red', 'green', 'blue']) {
+      const dot = document.createElement('div');
+      dot.className = 'ep-color' + (obj.color === c ? ' active' : '');
+      dot.style.background = COLORS[c];
+      dot.onclick = () => { obj.color = c; updateEditorProps(); };
+      colorsDiv.appendChild(dot);
+    }
+  }
+}
+
+document.getElementById('epDraggable').onchange = function() {
+  if (editorSelectedObj) editorSelectedObj.draggable = this.checked;
+};
+document.getElementById('epRotatable').onchange = function() {
+  if (editorSelectedObj) editorSelectedObj.rotatable = this.checked;
+};
+
+document.getElementById('edRotLeft').onclick = () => {
+  if (editorSelectedObj) editorSelectedObj.angle -= DEG15;
+};
+document.getElementById('edRotRight').onclick = () => {
+  if (editorSelectedObj) editorSelectedObj.angle += DEG15;
+};
+document.getElementById('edDelete').onclick = () => {
+  if (editorSelectedObj) {
+    const idx = editorObjects.indexOf(editorSelectedObj);
+    if (idx >= 0) editorObjects.splice(idx, 1);
+    editorSelectedObj = null;
+    objects = editorObjects;
+    updateEditorProps();
+  }
+};
+document.getElementById('edExit').onclick = exitEditor;
+
+document.getElementById('edSave').onclick = () => {
+  const name = prompt('Level name:', editorLevelName);
+  if (!name) return;
+  editorLevelName = name;
+
+  const levelData = {
+    id: editorLevelId || Date.now().toString(36),
+    name: editorLevelName,
+    objects: editorObjects.map(o => {
+      const g = editorComputeGridCoords(o);
+      const d = { type: o.type, x: g.x, y: g.y };
+      if (o.angle) d.angle = o.angle;
+      if (o.draggable) d.draggable = true;
+      if (o.rotatable) d.rotatable = true;
+      if (o.color && o.color !== 'white') d.color = o.color;
+      return d;
+    }),
+  };
+
+  const customs = getCustomLevels();
+  const existIdx = customs.findIndex(c => c.id === levelData.id);
+  if (existIdx >= 0) customs[existIdx] = levelData;
+  else customs.push(levelData);
+  saveCustomLevels(customs);
+  saveCustomLevelToApi(levelData);
+  editorLevelId = levelData.id;
+  document.getElementById('levelName').textContent = editorLevelName;
+};
+
+function startPlayTest() {
+  if (editorObjects.length === 0) return;
+  const hasLaser = editorObjects.some(o => o.type === 'laser');
+  const hasTarget = editorObjects.some(o => o.type === 'target');
+  if (!hasLaser || !hasTarget) {
+    alert('Level needs at least one laser and one target!');
+    return;
+  }
+  playTestMode = true;
+  editorObjects.forEach(o => {
+    o.startX = o.x; o.startY = o.y; o.startAngle = o.angle;
+    o.hit = false;
+  });
+  objects = editorObjects;
+  levelWon = false;
+  document.getElementById('editorProps').classList.remove('show');
+  document.getElementById('levelName').textContent = editorLevelName + ' (Testing)';
+  document.getElementById('edPlay').textContent = 'Stop';
+  document.getElementById('edPlay').onclick = stopPlayTest;
+  document.getElementById('editorPalette').style.display = 'none';
+  document.getElementById('edDelete').style.display = 'none';
+  document.getElementById('edSave').style.display = 'none';
+  document.getElementById('edRotLeft').style.display = 'none';
+  document.getElementById('edRotRight').style.display = 'none';
+}
+function stopPlayTest() {
+  playTestMode = false;
+  editorObjects.forEach(o => o.reset());
+  levelWon = false;
+  objects = editorObjects;
+  document.getElementById('winOverlay').classList.remove('show');
+  document.getElementById('levelName').textContent = editorLevelName;
+  document.getElementById('edPlay').textContent = 'Play';
+  document.getElementById('edPlay').onclick = startPlayTest;
+  document.getElementById('editorPalette').style.display = '';
+  document.getElementById('edDelete').style.display = '';
+  document.getElementById('edSave').style.display = '';
+  document.getElementById('edRotLeft').style.display = '';
+  document.getElementById('edRotRight').style.display = '';
+}
+document.getElementById('edPlay').onclick = startPlayTest;
+
+async function openMyLevels() {
+  const list = document.getElementById('slList');
+  list.innerHTML = '';
+  const customs = (await loadCustomLevelsFromApi()) ?? getCustomLevels();
+  if (customs.length === 0) {
+    list.innerHTML = '<p style="text-align:center;color:rgba(200,220,255,0.5);padding:20px;">No custom levels yet. Tap "+ New Level" to create one!</p>';
+  }
+  customs.forEach((lvl, i) => {
+    const card = document.createElement('div');
+    card.className = 'sl-card';
+    card.innerHTML = `
+      <div class="sl-card-info">
+        <div class="sl-card-name">${lvl.name}</div>
+        <div class="sl-card-meta">${lvl.objects.length} objects</div>
+      </div>
+      <div class="sl-card-actions">
+        <button type="button" class="sl-play">Play</button>
+        <button type="button" class="sl-edit">Edit</button>
+        <button type="button" class="sl-del">Del</button>
+      </div>
+    `;
+    card.querySelector('.sl-play').onclick = (e) => {
+      e.stopPropagation();
+      closeSavedLevels();
+      enterEditor(lvl, lvl.id);
+      document.getElementById('edPlay').click();
+    };
+    card.querySelector('.sl-edit').onclick = (e) => {
+      e.stopPropagation();
+      closeSavedLevels();
+      enterEditor(lvl, lvl.id);
+    };
+    card.querySelector('.sl-del').onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Delete "' + lvl.name + '"?')) {
+        customs.splice(i, 1);
+        saveCustomLevels(customs);
+        deleteCustomLevelOnApi(lvl.id);
+        openMyLevels();
+      }
+    };
+    list.appendChild(card);
+  });
+  document.getElementById('savedLevelsOverlay').classList.add('show');
+}
+function closeSavedLevels() {
+  document.getElementById('savedLevelsOverlay').classList.remove('show');
+}
+
+document.getElementById('btnSlClose').onclick = closeSavedLevels;
+document.getElementById('btnSlNew').onclick = () => {
+  closeSavedLevels();
+  enterEditor(null, null);
+};
+
+document.getElementById('btnBuild').onclick = openMyLevels;
+
+function handleEditorMouseDown(e) {
+  const { x: mx, y: my } = clientToCanvas(e.clientX, e.clientY);
+
+  if (editorPlaceTool) {
+    const snapped = snapToGrid(mx, my);
+    const obj = new GameObject(editorPlaceTool, snapped.x, snapped.y, 0, {
+      draggable: editorPlaceTool !== 'laser',
+      rotatable: editorPlaceTool !== 'laser' && editorPlaceTool !== 'wall',
+      color: 'white',
+    });
+    editorObjects.push(obj);
+    objects = editorObjects;
+    editorSelectedObj = obj;
+    editorPlaceTool = null;
+    buildEditorPalette();
+    updateEditorProps();
+    return;
+  }
+
+  for (let i = editorObjects.length - 1; i >= 0; i--) {
+    const obj = editorObjects[i];
+    if (obj.containsPoint(mx, my, S(30))) {
+      editorSelectedObj = obj;
+      editorDragging = obj;
+      editorDragStart = { x: mx, y: my };
+      editorDragOffset = { x: mx - obj.x, y: my - obj.y };
+      updateEditorProps();
+      return;
+    }
+  }
+  editorSelectedObj = null;
+  updateEditorProps();
+}
+
+function handleEditorMouseMove(e) {
+  if (!editorDragging) return;
+  const { x: mx, y: my } = clientToCanvas(e.clientX, e.clientY);
+  const snapped = snapToGrid(mx - editorDragOffset.x, my - editorDragOffset.y);
+  editorDragging.x = snapped.x;
+  editorDragging.y = snapped.y;
+}
+
+function handleEditorMouseUp(e) {
+  if (editorDragging && editorDragStart) {
+    const { x: mx, y: my } = clientToCanvas(e.clientX, e.clientY);
+    const dist = Math.hypot(mx - editorDragStart.x, my - editorDragStart.y);
+    if (dist < 5 && editorDragging.rotatable) {
+      editorDragging.angle += DEG15;
+    }
+  }
+  editorDragging = null;
+  editorDragStart = null;
+}
+
+// ─── Game Loop ──────────────────────────────────────────────────────
+let prevHitStates = new Map();
+
+function update() {
+  objects.forEach(o => { if (o.type === 'target') o.hit = false; });
+
+  beams = traceBeams(objects, W, H);
+
+  const targets = objects.filter(o => o.type === 'target');
+  for (const t of targets) {
+    const wasHit = prevHitStates.get(t) || false;
+    if (t.hit && !wasHit) {
+      spawnParticles(t.x, t.y, t.color, 20);
+    }
+    prevHitStates.set(t, t.hit);
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update();
+    if (particles[i].life <= 0) particles.splice(i, 1);
+  }
+
+  if (!levelWon && targets.length > 0 && targets.every(t => t.hit)) {
+    levelWon = true;
+    winShownTime = performance.now();
+    if (!editorMode) markLevelCompleted(currentLevel);
+    targets.forEach(t => spawnParticles(t.x, t.y, t.color, 30));
+    setTimeout(() => {
+      document.getElementById('winOverlay').classList.add('show');
+      if (editorMode) {
+        document.getElementById('winMsg').textContent = 'Level works! All targets hit.';
+        document.getElementById('btnWinNext').textContent = 'Back to Editor';
+        document.getElementById('btnWinNext').onclick = stopPlayTest;
+      } else {
+        document.getElementById('winMsg').textContent =
+          currentLevel < LEVELS.length - 1
+            ? 'All targets destroyed! Ready for the next challenge?'
+            : 'Congratulations! You completed all levels!';
+        document.getElementById('btnWinNext').textContent =
+          currentLevel < LEVELS.length - 1 ? 'Next Level \u25b6' : 'Play Again';
+        document.getElementById('btnWinNext').onclick = () => {
+          if (currentLevel < LEVELS.length - 1) loadLevel(currentLevel + 1);
+          else loadLevel(0);
+        };
+      }
+    }, 800);
+  }
+}
+
+function render() {
+  if (!ctx || !W || !H) {
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+  // If level never loaded (e.g. dimensions were 0 at start), load now
+  if (objects.length === 0 && LEVELS && LEVELS.length > 0 && !editorMode) {
+    loadLevel(Math.min(currentLevel, LEVELS.length - 1));
+  }
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#0a0e18';
+  ctx.fillRect(0, 0, W, H);
+
+  drawGrid();
+
+  for (const obj of objects) {
+    switch (obj.type) {
+      case 'wall': drawWall(obj); break;
+      case 'filter': drawFilter(obj); break;
+    }
+  }
+
+  for (const beam of beams) {
+    drawBeam(beam.from, beam.to, beam.color);
+  }
+
+  for (const obj of objects) {
+    switch (obj.type) {
+      case 'laser': drawLaser(obj); break;
+      case 'mirror': drawMirror(obj); break;
+      case 'splitter': drawSplitter(obj); break;
+      case 'prism': drawPrism(obj); break;
+      case 'target': drawTarget(obj); break;
+    }
+  }
+
+  if (editorMode && !playTestMode) {
+    if (editorSelectedObj) {
+      ctx.save();
+      ctx.strokeStyle = '#64d2ff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(editorSelectedObj.x, editorSelectedObj.y, S(38), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    for (const obj of editorObjects) {
+      if (obj.draggable) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(100,210,255,0.15)';
+        ctx.beginPath();
+        ctx.arc(obj.x, obj.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  } else {
+    drawSelectionRing(selectedObj);
+    drawRotateHint(hoveredObj || selectedObj);
+  }
+  drawParticles();
+
+  if (levelWon) {
+    const t = Math.min((performance.now() - winShownTime) / 500, 1);
+    ctx.save();
+    ctx.globalAlpha = t * 0.15;
+    ctx.fillStyle = '#64d2ff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+}
+
+function gameLoop() {
+  update();
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// Start game loop immediately so the level is visible even if API is slow
+gameLoop();
+
+(async function init() {
+  const p = await loadProgressFromApi();
+  if (p) {
+    localStorage.setItem('laserLabyrinthCompleted', JSON.stringify(p.completedLevels));
+    localStorage.setItem('laserLabyrinthLevel', String(p.currentLevel));
+    currentLevel = p.currentLevel;
+    loadLevel(Math.min(currentLevel, LEVELS.length - 1));
+  }
+  if (location.hash === '#build') setTimeout(openMyLevels, 300);
+})();
+</script>
+</body>
+</html>

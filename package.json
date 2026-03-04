@@ -1,0 +1,8 @@
+{
+  "name": "thane-app",
+  "version": "1.0.0",
+  "description": "Laser Labyrinth with IONOS database (PHP)",
+  "scripts": {
+    "php": "powershell -ExecutionPolicy Bypass -File run-php.ps1"
+  }
+}
