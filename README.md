@@ -1,6 +1,6 @@
 # Laser Labyrinth
 
-A small puzzle game with progress and custom levels stored in a database. The app runs on **PHP** (IONOS Deploy Now or local).
+Repo for my kid. A small puzzle game with progress and custom levels stored in a database. The app runs on **PHP** (IONOS Deploy Now or local).
 
 ## Quick start (PHP)
 
