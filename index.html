@@ -555,7 +555,7 @@ const LEVELS = [
       { type: 'laser', x: 1, y: 1, angle: Math.PI / 4 },
       { type: 'wall', x: 5, y: 3, angle: 0 },
       { type: 'wall', x: 5, y: 5, angle: 0 },
-      { type: 'mirror', x: 4, y: 4, angle: 0, draggable: true, rotatable: true },
+      { type: 'splitter', x: 4, y: 4, angle: 0, draggable: true, rotatable: true },
       { type: 'mirror', x: 7, y: 2, angle: Math.PI / 4, draggable: true, rotatable: true },
       { type: 'mirror', x: 9, y: 6, angle: -Math.PI / 4, draggable: true, rotatable: true },
       { type: 'target', x: 9, y: 2 },
@@ -627,7 +627,7 @@ const LEVELS = [
       { type: 'wall', x: 3, y: 6, angle: 0 },
       { type: 'wall', x: 5, y: 6, angle: 0 },
       { type: 'wall', x: 7, y: 6, angle: 0 },
-      { type: 'mirror', x: 1, y: 5, angle: Math.PI / 4, draggable: true, rotatable: true },
+      { type: 'splitter', x: 1, y: 5, angle: Math.PI / 4, draggable: true, rotatable: true },
       { type: 'mirror', x: 4, y: 5, angle: 0, draggable: true, rotatable: true },
       { type: 'mirror', x: 7, y: 3, angle: 0, draggable: true, rotatable: true },
       { type: 'mirror', x: 9, y: 5, angle: 0, draggable: true, rotatable: true },
@@ -705,7 +705,8 @@ async function loadCustomLevelsFromApi() {
   return null;
 }
 async function saveCustomLevelToApi(level) {
-  await apiFetch('/api/custom-levels', { method: 'POST', body: JSON.stringify({ id: level.id, name: level.name, objects: level.objects }) });
+  const r = await apiFetch('/api/custom-levels', { method: 'POST', body: JSON.stringify({ id: level.id, name: level.name, objects: level.objects }) });
+  return !!(r && r.ok);
 }
 async function deleteCustomLevelOnApi(id) {
   await apiFetch('/api/custom-levels/' + encodeURIComponent(id), { method: 'DELETE' });
@@ -1609,7 +1610,7 @@ document.getElementById('edDelete').onclick = () => {
 };
 document.getElementById('edExit').onclick = exitEditor;
 
-document.getElementById('edSave').onclick = () => {
+document.getElementById('edSave').onclick = async () => {
   const name = prompt('Level name:', editorLevelName);
   if (!name) return;
   editorLevelName = name;
@@ -1633,9 +1634,12 @@ document.getElementById('edSave').onclick = () => {
   if (existIdx >= 0) customs[existIdx] = levelData;
   else customs.push(levelData);
   saveCustomLevels(customs);
-  saveCustomLevelToApi(levelData);
+  const savedToCloud = await saveCustomLevelToApi(levelData);
   editorLevelId = levelData.id;
   document.getElementById('levelName').textContent = editorLevelName;
+  if (!savedToCloud) {
+    alert('Saved on this device only. Cloud save failed.\n\n• Run the app from the server (e.g. http://localhost:8000), not by opening the HTML file.\n• Ensure .env has DB_PASSWORD set and the database is reachable.');
+  }
 };
 
 function startPlayTest() {
